@@ -1,44 +1,43 @@
-loadstring([[
-local RS=game:GetService("ReplicatedStorage")
-local upgradeRemote=RS.Network.UpgradeTowerMachine_Activate
+local RS = game:GetService("ReplicatedStorage")
+local upgradeRemote = RS.Network.UpgradeTowerMachine_Activate
+
 local function getInventory()
-  for i,v in pairs(getgc(true)) do
-    if type(v)=="table" and rawget(v,"Inventory") and type(v.Inventory)=="table" then return v.Inventory end
-  end
-end
-local fuseDelay=0.3
-task.spawn(function()
-  while true do
-    local inventory=getInventory()
-    if inventory and inventory.Tower then
-      local towerGroups={}
-      for uid,towerData in pairs(inventory.Tower) do
-        if towerData.id then
-          towerGroups[towerData.id]=towerGroups[towerData.id]or{}
-          table.insert(towerGroups[towerData.id],uid)
+    for i, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "Inventory") and type(v.Inventory) == "table" then
+            return v.Inventory
         end
-      end
-      for _,towerUIDs in pairs(towerGroups) do
-        while #towerUIDs>=2 do
-          local baseUID=table.remove(towerUIDs,1)
-          local fodder={}
-          for _,uid in ipairs(towerUIDs) do fodder[uid]=1 end
-          local success,err=pcall(function()
-            upgradeRemote:InvokeServer(baseUID,fodder)
-          end)
-          if not success then warn("Upgrade fehlgeschlagen:",err) end
-          task.wait(0.3)
-          inventory=getInventory()
-          if inventory and inventory.Tower then
-            towerUIDs={}
-            for uid,towerData in pairs(inventory.Tower) do
-              if towerData.id==baseUID then table.insert(towerUIDs,uid) end
-            end
-          else break end
-        end
-      end
     end
-    task.wait(fuseDelay)
-  end
+end
+
+task.spawn(function()
+    while true do
+        local inventory = getInventory()
+        if inventory and inventory.Tower then
+            -- sortiere alle Tower nach Name
+            local towerGroups = {}
+
+            for uid, towerData in pairs(inventory.Tower) do
+                if towerData.id then
+                    towerGroups[towerData.id] = towerGroups[towerData.id] or {}
+                    table.insert(towerGroups[towerData.id], uid)
+                end
+            end
+
+            for _, uids in pairs(towerGroups) do
+                while #uids >= 2 do
+                    local baseUID = table.remove(uids, 1)
+                    local fodder = {}
+
+                    for _, uid in ipairs(uids) do
+                        fodder[uid] = 1
+                    end
+
+                    upgradeRemote:InvokeServer(baseUID, fodder)
+                    break -- nach jeder Fusion neu abwarten
+                end
+            end
+        end
+
+        task.wait(0.5) -- alle 3 Sekunden
+    end
 end)
-]])()
